@@ -1,0 +1,49 @@
+---
+- name: Test playbook
+  hosts: localhost
+  connection: local
+  gather_facts: yes
+  collections:
+    - redhat.openshift
+    - redhat.openshift_virtualization
+  vars:
+    os: fedora
+    namespace: kaito-test
+    name: fedora-test
+
+  tasks:
+  - name: Create a VirtualMachine with a DataVolume template
+    redhat.openshift_virtualization.kubevirt_vm:
+      host: "{{ lookup('env', 'K8S_AUTH_HOST') }}"
+      api_key: "{{ lookup('env', 'K8S_AUTH_API_KEY') }}"
+      validate_certs: false
+      state: present
+      name: "{{ name }}"
+      namespace: "{{ namespace }}"
+      data_volume_templates:
+        - metadata:
+            name: "{{ name }}"
+          spec:
+            sourceRef:
+              kind: DataSource
+              name: "{{ os }}"
+              namespace: openshift-virtualization-os-images
+            storage:
+              resources: {}
+      spec:
+        domain:
+          memory:
+            guest: 1024M
+          devices: {}
+        volumes:
+        - dataVolume:
+            name: "{{ name }}"
+          name: datavolume
+        - cloudInitConfigDrive:
+            userData: |-
+              #cloud-config
+              # The default username is: cloud-user
+          name: cloudinit
+      wait_timeout: 300
+      wait: yes
+
